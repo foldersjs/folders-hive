@@ -1,0 +1,26 @@
+{
+  "name": "folders-hive",
+  "version": "0.0.1",
+  "description": "Folders module direct connecting to HiveServer 2 ",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/foldersjs/folders-hive.git"
+  },
+  "author": "",
+  "license": "(Apache-2.0 OR MIT)",
+  "bugs": {
+    "url": "https://github.com/foldersjs/folders-hive/issues"
+  },
+  "main": "./src/folders-hive",
+  "homepage": "https://github.com/foldersjs/folders-hive",
+  "dependencies": {
+    "jshs2": "^0.2.12"
+  },
+  "devDependencies": {
+    "gulp": "3.x",
+    "gulp-jshint": "1.x",
+    "gulp-istanbul": "0.x",
+    "gulp-mocha": "2.x",
+    "gulp-exit": "0.0.2"
+  }
+}
