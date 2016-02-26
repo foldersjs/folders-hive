@@ -1,0 +1,183 @@
+var HiveThriftClient = require('./hiveThriftClient');
+
+var assert = require('assert');
+// var Readable = require('stream').Readable;
+// var tableFormatter = require('markdown-table');
+
+var DEFAULT_HIVE_PREFIX = "/folders.io_0:hive/";
+
+var FoldersHive = function(prefix, options, callback) {
+  assert.equal(typeof (options), 'object', "argument 'options' must be a object");
+
+  if (prefix && prefix.length && prefix.substr(-1) != '/')
+    prefix += '/';
+  this.prefix = prefix || DEFAULT_HIVE_PREFIX;
+
+  this.configure(options, callback);
+};
+
+module.exports = FoldersHive;
+
+FoldersHive.prototype.configure = function(options, callback) {
+  this.host = options.host;
+  this.port = options.port;
+  this.username = options.username || 'anonymous';
+  this.password = options.password || '';
+  this.auth = options.auth || 'nosasl';
+  this.timeout = options.timeout = "10000";
+
+  this.client = new HiveThriftClient(options, callback);
+};
+
+FoldersHive.prototype.disconnect = function disconnect(callback) {
+  this.client.disconnect(callback);
+}
+
+FoldersHive.prototype.features = FoldersHive.features = {
+  cat : true,
+  ls : true,
+  write : false,
+  server : false
+};
+
+FoldersHive.isConfigValid = function(config, cb) {
+  assert.equal(typeof (config), 'object', "argument 'config' must be a object");
+
+  assert.equal(typeof (cb), 'function', "argument 'cb' must be a function");
+
+  var checkConfig = config.checkConfig;
+  if (checkConfig == false) {
+    return cb(null, config);
+  }
+
+  // TODO check access credentials and test conn if needed.
+
+  return cb(null, config);
+};
+
+// remove the prefix from path if exist
+FoldersHive.prototype.getHivePath = function(path, prefix) {
+  path = (path == '/' ? null : path.slice(1));
+
+  if (path == null) {
+    return null;
+  }
+
+  var parts = path.split('/');
+  var prefixPath = parts[0];
+  if (prefix && prefix[0] == '/')
+    prefixPath = '/' + prefixPath;
+  prefixPath = prefixPath + '/';
+
+  // if the path start with the prefix, remove the prefix string.
+  if (prefixPath == prefix) {
+    parts = parts.slice(1, parts.length);
+  }
+
+  var out = {};
+  if (parts.length > 0)
+    out.database = parts[0];
+  if (parts.length > 1)
+    out.table = parts[1];
+  if (parts.length > 2)
+    out.tableMetadata = parts[2];
+
+  return out;
+};
+
+/**
+ * list db metadata in folders.io format
+ * 
+ * @param uri,
+ *          the uri for db. /${database}/${table}/ eg:
+ *          <li>'/' , show the root path, show the databases/schemas</li>
+ *          <li>'/test-db', show all the tables in database 'test-db' </li>
+ *          <li>'/test-db/test-table', show the metadata of table we support 'test-table' in database 'test-db';</li>
+ *          all the path could also start with {prefix}, '/folders.io_0:hive/test-db'
+ * @param cb,
+ *          callback function(err, result) function. result will be a file info array. [{}, ... {}] <br>
+ *          a example file information <code>
+ *            { 
+ *               name: 'default',
+ *               fullPath: 'default',
+ *               meta: {},
+ *               uri: 'folders.io_0:hive/default',
+ *               size: 0,
+ *               extension: '+folder',
+ *               modificationTime: 0
+ *            }
+ *            </code>
+ */
+FoldersHive.prototype.ls = function(path, cb) {
+  path = this.getHivePath(path, this.prefix);
+  console.log("hive path after parse, ", path);
+  if (path == null || !path.database) {
+    console.log("database name not specified, ls root");
+    showDatabases(this.client, this.prefix, cb);
+  } else if (!path.table) {
+    console.log("table name not specified, ls database ", path.database);
+    showTables(this.client, this.prefix, path.database, cb);
+  } else {
+    console.log("show metadata of table, we currently just support column");
+    showTableMetas(this.client, this.prefix, path.database + '/' + path.table, cb);
+  }
+};
+
+var showDatabases = function(client, prefix, cb) {
+  client.getSchemasNames(function(error, databases) {
+    if (error) {
+      console.log('show shemas error', error);
+      cb(error, null);
+    }
+    cb(null, dbAsFolders(prefix, databases));
+  });
+};
+
+var dbAsFolders = function(prefix, dbs) {
+  var out = [];
+  for (var i = 0; i < dbs.length; i++) {
+    var db = dbs[i];
+    var o = {
+      name : db
+    };
+    o.fullPath = o.name;
+    o.meta = {};
+    o.uri = prefix + o.fullPath;
+    o.size = 0;
+    o.extension = '+folder';
+    // o.type = "text/plain";
+    o.modificationTime = 0;
+    out.push(o);
+  }
+  return out;
+}
+
+var showTables = function(client, prefix, dbName, cb) {
+
+  // TODO send GetTables thrift request
+
+};
+
+var showTableMetas = function(prefix, path, cb) {
+
+  // var metadatas = ['columns', 'schemas', 'records'];
+  var metadatas = [ 'columns', 'select' ];
+
+  var out = [];
+  for (var i = 0; i < metadatas.length; i++) {
+    var o = {
+      name : metadatas[i] + '.md'
+    };
+    o.fullPath = path + '/' + o.name;
+    o.meta = {};
+    o.uri = prefix + o.fullPath;
+    // FIXME can't get the size.
+    o.size = 0;
+    o.extension = 'md';
+    o.type = "text/markdown";
+    o.modificationTime = 0;
+    out.push(o);
+  }
+
+  cb(null, out);
+};

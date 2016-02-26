@@ -14,7 +14,7 @@
   "main": "./src/folders-hive",
   "homepage": "https://github.com/foldersjs/folders-hive",
   "dependencies": {
-    "jshs2": "^0.2.12"
+    "thrift": "^0.9.3"
   },
   "devDependencies": {
     "gulp": "3.x",
