@@ -21,21 +21,25 @@ var foldersHive = new FoldersHive(prefix, config, function(err, session) {
 
     console.log("ls databases success, ", databases);
 
-    foldersHive.disconnect();
-    // foldersHive.ls('/folders', function cb(error, tables) {
-    // if (error) {
-    // console.log("error in ls database folders");
-    // console.log(error);
-    // }
-    // console.log("ls tables success, ", tables);
-    //
-    // foldersHive.ls('/folders/test', function cb(error, metadata) {
-    // if (error) {
-    // console.log('error in ls table metadata');
-    // console.log(error);
-    // }
-    //
-    // console.log('ls metadata success, ', metadata);
+    foldersHive.ls('/folders', function cb(error, tables) {
+      if (error) {
+        console.log("error in ls database folders");
+        console.log(error);
+      }
+      console.log("ls tables success, ", tables);
+
+      foldersHive.ls('/folders/test', function cb(error, metadata) {
+        if (error) {
+          console.log('error in ls table metadata');
+          console.log(error);
+        }
+
+        console.log('ls metadata success, ', metadata);
+        foldersHive.disconnect();
+      });
+
+    });
+
     // foldersHive.cat('/folders/test/columns', function cb(error,
     // columns) {
     // if (error) {

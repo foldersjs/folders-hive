@@ -110,16 +110,12 @@ FoldersHive.prototype.getHivePath = function(path, prefix) {
  */
 FoldersHive.prototype.ls = function(path, cb) {
   path = this.getHivePath(path, this.prefix);
-  console.log("hive path after parse, ", path);
   if (path == null || !path.database) {
-    console.log("database name not specified, ls root");
     showDatabases(this.client, this.prefix, cb);
   } else if (!path.table) {
-    console.log("table name not specified, ls database ", path.database);
     showTables(this.client, this.prefix, path.database, cb);
   } else {
-    console.log("show metadata of table, we currently just support column");
-    showTableMetas(this.client, this.prefix, path.database + '/' + path.table, cb);
+    showTableMetas(this.prefix, path.database + '/' + path.table, cb);
   }
 };
 
@@ -127,8 +123,13 @@ var showDatabases = function(client, prefix, cb) {
   client.getSchemasNames(function(error, databases) {
     if (error) {
       console.log('show shemas error', error);
-      cb(error, null);
+      return cb(error, null);
     }
+
+    if (!databases) {
+      return cb('databases null', null);
+    }
+
     cb(null, dbAsFolders(prefix, databases));
   });
 };
@@ -153,15 +154,42 @@ var dbAsFolders = function(prefix, dbs) {
 }
 
 var showTables = function(client, prefix, dbName, cb) {
+  client.getTablesNames(dbName, function(error, tables) {
+    if (error) {
+      return cb(error, null);
+    }
 
-  // TODO send GetTables thrift request
+    if (!tables) {
+      return cb('null tables,', tables);
+    }
+
+    cb(null, tbAsFolders(prefix, dbName, tables));
+  });
 
 };
 
+var tbAsFolders = function(prefix, dbName, tbs) {
+  var out = [];
+  for (var i = 0; i < tbs.length; i++) {
+    var table = tbs[i];
+    var o = {
+      name : table
+    };
+    o.fullPath = dbName + '/' + o.name;
+    o.meta = {};
+    o.uri = prefix + o.fullPath;
+    o.size = 0;
+    o.extension = '+folder';
+    // o.type = "text/plain";
+    o.modificationTime = 0;
+    out.push(o);
+  }
+  return out;
+}
+
 var showTableMetas = function(prefix, path, cb) {
 
-  // var metadatas = ['columns', 'schemas', 'records'];
-  var metadatas = [ 'columns', 'select' ];
+  var metadatas = [ 'columns', 'create_table', 'select' ];
 
   var out = [];
   for (var i = 0; i < metadatas.length; i++) {

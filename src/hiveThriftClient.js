@@ -33,6 +33,9 @@ HiveThriftClient.prototype.connect = function connect(options, callback) {
         self.session = null;
       } else {
         console.info("Session opened for user " + options.username + " with protocol value = " + protocol);
+
+        // TODO one thing to notice, is there any expire time for the session ?
+        // if so , we need to re-open a new session when execute thrift request.
         self.session = response.sessionHandle;
       }
       callback(error, response.sessionHandle);
@@ -83,24 +86,30 @@ HiveThriftClient.prototype.getSchemasNames = function getSchemasNames(cb) {
   getSchemasThrift(client, session, function(error, response) {
     if (error) {
       console.error('show shemas error', error);
-      cb(error, null);
+      return cb(error, null);
     }
 
-    fetchRowsThrift(client, response.operationHandle, 100, function(error, responseFetch) {
-      if (error) {
-        console.error('fetch data error,', error);
-        cb(error, null);
-      }
-
-      var rowColumns = responseFetch.results.columns;
-      var currentRow = rowColumns[0]; // TABLE_SCHEM row, which contain the database names;
-      var databases = currentRow['stringVal'].values;
-
-      cb(null, databases);
+    getRowColumnsByColumnName(client, response.operationHandle, 'TABLE_SCHEM', function(error, response) {
+      cb(error, response);
     });
 
   });
+};
 
+HiveThriftClient.prototype.getTablesNames = function getTablesNames(schemaName, callback) {
+  var session = this.session;
+  var client = this.client;
+
+  getTablesThrift(client, session, schemaName, function(error, response) {
+    if (error) {
+      console.error("getTablesNames error = " + JSON.stringify(error));
+      callback(error, response);
+    } else {
+      getRowColumnsByColumnName(client, response.operationHandle, 'TABLE_NAME', function(error, response) {
+        callback(error, response);
+      });
+    }
+  });
 }
 
 // Open Hive session
@@ -130,6 +139,16 @@ function getSchemasThrift(client, session, callback) {
   client.GetSchemas(request, callback);
 }
 
+/* Execute getTables action */
+function getTablesThrift(client, session, schemaName, callback) {
+  var request = new ttypes.TGetTablesReq();
+  request.sessionHandle = session;
+  request.schemaName = schemaName;
+  client.GetTables(request, function(error, response) {
+    callback(error, response)
+  });
+}
+
 // Execute GetResultSetMetadata action
 function getResultSetMetadataThrift(client, operation, callback) {
   var request = new ttypes.TGetResultSetMetadataReq();
@@ -151,7 +170,43 @@ function fetchRowsThrift(client, operation, maxRows, callback) {
   });
 }
 
-/* Fix FetchRowsThrift limitation */
+// get Row columns of the specified {columnName}
+
+// TODO check if we could get specific colummns rather than all the columns here.
+// Maybe we should always select the specific colummns in SQL, rather than filter from Fetch Result
+function getRowColumnsByColumnName(client, operation, columnName, callback) {
+  getResultSetMetadataThrift(client, operation, function(error, responseMeta) {
+    if (error) {
+      callback(error, null);
+    } else {
+      fetchRowsThrift(client, operation, 1000, function(error, responseFetch) {
+        if (error) {
+          callback(error, null);
+        } else {
+          var result;
+          var metaColumns = responseMeta.schema.columns;
+          var rowColumns = responseFetch.results.columns;
+          var currentMeta, currentRow;
+          var type = '';
+          for (var i = 0; i < metaColumns.length; i++) {
+
+            currentMeta = metaColumns[i];
+            currentRow = rowColumns[i];
+            type = getReverseTColumn(currentMeta.typeDesc.types[0].primitiveEntry.type);
+
+            if (currentMeta.columnName === columnName) {
+              result = currentRow[type].values;
+              break;
+            }
+          }
+          callback(error, result);
+        }
+      });
+    }
+  });
+}
+
+// Fix FetchRowsThrift limitation, return the Key-Value, rows.
 function getKeyValueRows(client, operation, callback) {
   getResultSetMetadataThrift(client, operation, function(error, responseMeta) {
     if (error) {
