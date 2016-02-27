@@ -236,12 +236,25 @@ var showTableSelect = function(client, prefix, dbName, tbName, cb) {
 };
 
 var showCreateTable = function(client, prefix, dbName, tbName, cb) {
+  client.showCreateTable(dbName, tbName, function(error, createTableSQL) {
+    if (error) {
+      return cb(error, null);
+    }
 
+    if (!createTableSQL) {
+      return cb('null tables,', null);
+    }
+    var foramttedCreateTableSQL = "```sql" + '\n' + createTableSQL + '\n' + "```";
+    console.log('showCreateTable result:');
+    console.log(foramttedCreateTableSQL);
+    callbackCatResult('create_table.md', foramttedCreateTableSQL, cb);
+
+  });
 };
 
 var showTableColumns = function(client, prefix, dbName, tbName, cb) {
 
-  client.getColumns(dbName, tbName, function(error, columns) {
+  client.getTableColumns(dbName, tbName, function(error, columns) {
     if (error) {
       return cb(error, null);
     }

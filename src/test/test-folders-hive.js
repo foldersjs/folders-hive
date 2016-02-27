@@ -44,7 +44,16 @@ var foldersHive = new FoldersHive(prefix, config, function(err, session) {
 
           console.log('cat table columns success,', columns.size);
 
-          foldersHive.disconnect();
+          foldersHive.cat('/folders/test/create_table.md', function cb(error, columns) {
+            if (error) {
+              console.log('error in cat create table SQL');
+              console.log(error);
+            }
+
+            console.log('cat create table SQL success,', columns.size);
+
+            foldersHive.disconnect();
+          });
         });
 
       });

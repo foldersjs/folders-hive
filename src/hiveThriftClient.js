@@ -112,7 +112,7 @@ HiveThriftClient.prototype.getTablesNames = function getTablesNames(schemaName, 
   });
 }
 
-HiveThriftClient.prototype.getColumns = function getColumns(schemaName, tableName, callback) {
+HiveThriftClient.prototype.getTableColumns = function getTableColumns(schemaName, tableName, callback) {
   var session = this.session;
   var client = this.client;
 
@@ -125,6 +125,69 @@ HiveThriftClient.prototype.getColumns = function getColumns(schemaName, tableNam
         callback(error, response);
       });
     }
+  });
+}
+
+HiveThriftClient.prototype.showCreateTable = function showCreateTable(schemaName, tableName, callback) {
+  var session = this.session;
+  var client = this.client;
+
+  // FIXME: Escape db/tbname as needed.
+  var sql = 'SHOW CREATE TABLE ' + schemaName + '.' + tableName;
+
+  this.rawExecuteStatement(sql, function(error, response) {
+    if (error) {
+      console.error("executeSelect error = " + JSON.stringify(error));
+      callback(error, response);
+    } else {
+      getRowColumnsByColumnName(client, response.operationHandle, 'createtab_stmt', function(error, response) {
+        if (error)
+          return callback(error, null);
+
+        callback(error, response.join('\n'));
+      });
+    }
+  });
+}
+
+/*
+ * Execute a select statement - session : The operation to fetch rows from - statement : The statement to be executed -
+ * maxRows : max row number to be fetched - callback : callback(error, result) function - error : error - result :
+ * result of the executeSelect
+ */
+HiveThriftClient.prototype.executeSelect = function executeSelect(selectStatement, callback) {
+  var client = this.client;
+  this.rawExecuteStatement(selectStatement, function(error, response) {
+    if (error) {
+      console.error("executeSelect error = " + JSON.stringify(error));
+      callback(error, response);
+    } else {
+      getRowsByColumnNames(client, response.operationHandle, null, function(error, response) {
+        callback(error, response);
+      });
+    }
+  });
+}
+
+/*
+ * Execute a statement, using the raw Thrift Hive API - session : The opened session - statement : The statement to be
+ * executed - callback : callback(error, result) function - error : error - result : result of the rawExecuteStatement
+ */
+HiveThriftClient.prototype.rawExecuteStatement = function rawExecuteStatement(statement, callback) {
+  var session = this.session;
+  var client = this.client;
+
+  executeStatementThrift(client, session, statement, function(error, response) {
+    if (error) {
+      console.error("executeStatement error = " + JSON.stringify(error));
+      callback(error, null);
+    } else if (response.status.statusCode == 3) {
+      console.error("executeStatement error = " + JSON.stringify(response.status));
+      callback(response.status, null);
+    } else {
+      callback(null, response);
+    }
+
   });
 }
 
@@ -172,6 +235,17 @@ function getColumnsThrift(client, session, schemaName, tableName, callback) {
   request.schemaName = schemaName;
   request.tableName = tableName;
   client.GetColumns(request, function(error, response) {
+    callback(error, response);
+  });
+}
+
+/* Execute HiveQL Statement */
+function executeStatementThrift(client, session, statement, callback) {
+  var request = new ttypes.TExecuteStatementReq();
+  request.sessionHandle = session;
+  request.statement = statement;
+  request.runAsync = false;
+  client.ExecuteStatement(request, function(error, response) {
     callback(error, response);
   });
 }
