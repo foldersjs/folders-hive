@@ -35,23 +35,21 @@ var foldersHive = new FoldersHive(prefix, config, function(err, session) {
         }
 
         console.log('ls metadata success, ', metadata);
-        foldersHive.disconnect();
+
+        foldersHive.cat('/folders/test/columns.md', function cb(error, columns) {
+          if (error) {
+            console.log('error in cat table columns');
+            console.log(error);
+          }
+
+          console.log('cat table columns success,', columns.size);
+
+          foldersHive.disconnect();
+        });
+
       });
 
     });
-
-    // foldersHive.cat('/folders/test/columns', function cb(error,
-    // columns) {
-    // if (error) {
-    // console.log('error in cat table columns');
-    // console.log(error);
-    // }
-    //
-    // console.log('cat table columns success, \n', columns);
-    // });
-    // })
-    //
-    // });
 
   });
 });

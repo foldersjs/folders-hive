@@ -112,6 +112,22 @@ HiveThriftClient.prototype.getTablesNames = function getTablesNames(schemaName, 
   });
 }
 
+HiveThriftClient.prototype.getColumns = function getColumns(schemaName, tableName, callback) {
+  var session = this.session;
+  var client = this.client;
+
+  getColumnsThrift(client, session, schemaName, tableName, function(error, response) {
+    if (error) {
+      callback(error, response);
+    } else {
+      var tableColumnsToSelect = [ 'TABLE_SCHEM', 'TABLE_NAME', 'COLUMN_NAME', 'TYPE_NAME', 'IS_NULLABLE' ];
+      getRowsByColumnNames(client, response.operationHandle, tableColumnsToSelect, function(error, response) {
+        callback(error, response);
+      });
+    }
+  });
+}
+
 // Open Hive session
 function openSessionThrift(client, config, callback) {
   var protocol = ttypes.TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7
@@ -149,6 +165,17 @@ function getTablesThrift(client, session, schemaName, callback) {
   });
 }
 
+/* Execute get table Columns action */
+function getColumnsThrift(client, session, schemaName, tableName, callback) {
+  var request = new ttypes.TGetColumnsReq();
+  request.sessionHandle = session;
+  request.schemaName = schemaName;
+  request.tableName = tableName;
+  client.GetColumns(request, function(error, response) {
+    callback(error, response);
+  });
+}
+
 // Execute GetResultSetMetadata action
 function getResultSetMetadataThrift(client, operation, callback) {
   var request = new ttypes.TGetResultSetMetadataReq();
@@ -170,8 +197,10 @@ function fetchRowsThrift(client, operation, maxRows, callback) {
   });
 }
 
-// get Row columns of the specified {columnName}
-
+// return array of the specified column
+/*
+ * ['row1-columnX-value', 'row2-columnX-value', .... rowN-columnX-value ]
+ */
 // TODO check if we could get specific colummns rather than all the columns here.
 // Maybe we should always select the specific colummns in SQL, rather than filter from Fetch Result
 function getRowColumnsByColumnName(client, operation, columnName, callback) {
@@ -206,6 +235,76 @@ function getRowColumnsByColumnName(client, operation, columnName, callback) {
   });
 }
 
+// return a array of the operation, just like the tables display on CLI.
+// the first element of the array, is a array of the column names.
+// the left elements of the array, every element is array of the one actual row data.
+/*
+ * [ ['columnName1', 'ColumnName2'], ['row1-column1-value', 'row1-column2-value'], ['row2-column1-value',
+ * 'row2-column2-value'], ... , ['rowN-column1-value', 'rowN-column2-value'] ]
+ */
+// use the columnNamesToSelect to filter column, specify the columns we want to select
+// if not specify, will return all the columns.
+function getRowsByColumnNames(client, operation, columnNamesToSelect, callback) {
+
+  getResultSetMetadataThrift(client, operation, function(error, responseMeta) {
+    if (error) {
+      return callback(error, null);
+    }
+
+    fetchRowsThrift(client, operation, 50, function(error, responseFetch) {
+      if (error) {
+        return callback(error, null);
+      }
+
+      var metaColumns = responseMeta.schema.columns;
+      var rowColumns = responseFetch.results.columns;
+
+      var columnNames = [];
+      var columnPos = []; // actual pos in rowColumns
+      var columnTypes = [];
+      var currentMeta;
+      // filter the column, store the column name,type,post
+      for (var i = 0; i < metaColumns.length; i++) {
+        currentMeta = metaColumns[i];
+
+        if (columnNamesToSelect && columnNamesToSelect.length > 0
+            && columnNamesToSelect.indexOf(currentMeta.columnName) < 0) {
+          // filter the column.
+          continue;
+        }
+
+        columnNames.push(currentMeta.columnName);
+        columnTypes.push(getReverseTColumn(currentMeta.typeDesc.types[0].primitiveEntry.type))
+        columnPos.push(i);
+      }
+
+      if (columnNames.length == 0) {
+        return callback('no matched columns', null);
+      }
+
+      var columnSize = columnNames.length;
+      var rowSize = rowColumns[columnPos[0]][columnTypes[0]].values.length;
+      var result = [];
+      var row = [];
+      // push title
+      result.push(columnNames);
+      // push records.
+      for (var i = 0; i < rowSize; i++) {
+        row = [];
+        for (var j = 0; j < columnSize; j++) {
+          row.push(rowColumns[columnPos[j]][columnTypes[j]].values[i]);
+        }
+        // push row
+        result.push(row);
+      }
+
+      callback(error, result);
+    });
+
+  });
+
+}
+
 // Fix FetchRowsThrift limitation, return the Key-Value, rows.
 function getKeyValueRows(client, operation, callback) {
   getResultSetMetadataThrift(client, operation, function(error, responseMeta) {
@@ -216,11 +315,15 @@ function getKeyValueRows(client, operation, callback) {
         if (error) {
           callback(error, null);
         } else {
-          var result = new Object();
+
           var metaColumns = responseMeta.schema.columns;
           var rowColumns = responseFetch.results.columns;
+          console.log('responseMeta:', responseMeta);
+          console.log('responseFetch:', responseFetch);
           console.log('metaColumns:', metaColumns);
           console.log('rowColumns:', rowColumns);
+
+          var result = new Object();
           var currentMeta, currentRow;
           var type = '';
           for (var i = 0; i < metaColumns.length; i++) {
@@ -232,6 +335,7 @@ function getKeyValueRows(client, operation, callback) {
             console.log("----- getKeyValueRows ----- value = " + JSON.stringify(currentRow[type].values));
             result[currentMeta.columnName] = currentRow[type].values;
           }
+
           callback(error, result);
         }
       });

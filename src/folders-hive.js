@@ -1,8 +1,8 @@
 var HiveThriftClient = require('./hiveThriftClient');
 
 var assert = require('assert');
-// var Readable = require('stream').Readable;
-// var tableFormatter = require('markdown-table');
+var Readable = require('stream').Readable;
+var tableFormatter = require('markdown-table');
 
 var DEFAULT_HIVE_PREFIX = "/folders.io_0:hive/";
 
@@ -119,6 +119,27 @@ FoldersHive.prototype.ls = function(path, cb) {
   }
 };
 
+FoldersHive.prototype.cat = function(path, cb) {
+  path = this.getHivePath(path, this.prefix);
+
+  if (path == null || !path.database || !path.table || !path.tableMetadata) {
+    var error = "please specify the the database,table and metadata you want in path";
+    console.log(error);
+    return cb(error, null);
+  }
+
+  if (path.tableMetadata == 'select.md') {
+    showTableSelect(this.client, this.prefix, path.database, path.table, cb);
+  } else if (path.tableMetadata == 'create_table.md') {
+    showCreateTable(this.client, this.prefix, path.database, path.table, cb);
+  } else if (path.tableMetadata == 'columns.md') {
+    showTableColumns(this.client, this.prefix, path.database, path.table, cb);
+  } else {
+    // NOTES, now supported now
+    cb("not supported yet", null);
+  }
+}
+
 var showDatabases = function(client, prefix, cb) {
   client.getSchemasNames(function(error, databases) {
     if (error) {
@@ -209,3 +230,60 @@ var showTableMetas = function(prefix, path, cb) {
 
   cb(null, out);
 };
+
+var showTableSelect = function(client, prefix, dbName, tbName, cb) {
+
+};
+
+var showCreateTable = function(client, prefix, dbName, tbName, cb) {
+
+};
+
+var showTableColumns = function(client, prefix, dbName, tbName, cb) {
+
+  client.getColumns(dbName, tbName, function(error, columns) {
+    if (error) {
+      return cb(error, null);
+    }
+
+    if (!columns) {
+      return cb('null tables,', null);
+    }
+
+    var formattedColumnsData = tableFormatter(columns);// ,{'align': 'c'}
+    console.log('showTableColumns result:');
+    console.log(formattedColumnsData);
+    callbackCatResult('columns.md', formattedColumnsData, cb);
+
+  });
+};
+
+var showGenericResult = function(name, data, columns, cb) {
+  // convert the title of columns.
+  var title = [];
+  for (var i = 0; i < columns.length; i++) {
+    title.push(columns[i].name);
+  }
+  // insert the titils line before the first row
+  data.unshift(title);
+
+  // format the columns data include the title into markdown table
+  var formattedColumnsData = tableFormatter(data);// ,{'align': 'c'}
+
+  callbackCatResult(name, formattedColumnsData, cb);
+};
+
+var callbackCatResult = function(name, data, cb) {
+
+  // create a readable stream
+  var stream = new Readable();
+  stream.push(data);
+  stream.push(null);
+
+  cb(null, {
+    'stream' : stream,
+    'size' : data.length,
+    'name' : name
+  });
+
+}
