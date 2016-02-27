@@ -128,6 +128,13 @@ HiveThriftClient.prototype.getTableColumns = function getTableColumns(schemaName
   });
 }
 
+HiveThriftClient.prototype.getTableRecords = function getTableRecords(schemaName, tableName, callback) {
+  // FIXME: Escape db/tbname as needed.
+  var sql = 'SELECT * FROM ' + schemaName + '.' + tableName;
+
+  this.executeSelect(sql, callback);
+}
+
 HiveThriftClient.prototype.showCreateTable = function showCreateTable(schemaName, tableName, callback) {
   var session = this.session;
   var client = this.client;
@@ -377,44 +384,6 @@ function getRowsByColumnNames(client, operation, columnNamesToSelect, callback) 
 
   });
 
-}
-
-// Fix FetchRowsThrift limitation, return the Key-Value, rows.
-function getKeyValueRows(client, operation, callback) {
-  getResultSetMetadataThrift(client, operation, function(error, responseMeta) {
-    if (error) {
-      callback(error, null);
-    } else {
-      fetchRowsThrift(client, operation, 50, function(error, responseFetch) {
-        if (error) {
-          callback(error, null);
-        } else {
-
-          var metaColumns = responseMeta.schema.columns;
-          var rowColumns = responseFetch.results.columns;
-          console.log('responseMeta:', responseMeta);
-          console.log('responseFetch:', responseFetch);
-          console.log('metaColumns:', metaColumns);
-          console.log('rowColumns:', rowColumns);
-
-          var result = new Object();
-          var currentMeta, currentRow;
-          var type = '';
-          for (var i = 0; i < metaColumns.length; i++) {
-            currentMeta = metaColumns[i];
-            currentRow = rowColumns[i];
-            type = getReverseTColumn(currentMeta.typeDesc.types[0].primitiveEntry.type);
-            console.log("----- getKeyValueRows ----- columnName = " + currentMeta.columnName + " position = " + i
-                + " type = " + currentMeta.typeDesc.types[0].primitiveEntry.type);
-            console.log("----- getKeyValueRows ----- value = " + JSON.stringify(currentRow[type].values));
-            result[currentMeta.columnName] = currentRow[type].values;
-          }
-
-          callback(error, result);
-        }
-      });
-    }
-  });
 }
 
 /* Get TColumnValue from TTypeID, used to retrieve data from fetch (TColumnValue) with metadata knowledge (TTypeID) */

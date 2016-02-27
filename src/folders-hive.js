@@ -232,7 +232,21 @@ var showTableMetas = function(prefix, path, cb) {
 };
 
 var showTableSelect = function(client, prefix, dbName, tbName, cb) {
+  client.getTableRecords(dbName, tbName, function(error, records) {
+    if (error) {
+      return cb(error, null);
+    }
 
+    if (!records) {
+      return cb('null tables data,', null);
+    }
+
+    var formattedData = tableFormatter(records);// ,{'align': 'c'}
+    console.log('showTableSelect result:');
+    console.log(formattedData);
+    callbackCatResult('select.md', formattedData, cb);
+
+  });
 };
 
 var showCreateTable = function(client, prefix, dbName, tbName, cb) {
