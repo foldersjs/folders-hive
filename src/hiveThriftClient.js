@@ -23,7 +23,8 @@ HiveThriftClient.prototype.connect = function connect(options, callback) {
   /* Handle connection errors */
   self.connection.on('error', function(error) {
     console.error('connect error : ' + error);
-    callback(error, null);
+    if (callback)
+      callback(error, null);
   });
 
   self.connection.on('connect', function() {
@@ -38,7 +39,8 @@ HiveThriftClient.prototype.connect = function connect(options, callback) {
         // if so , we need to re-open a new session when execute thrift request.
         self.session = response.sessionHandle;
       }
-      callback(error, response.sessionHandle);
+      if (callback)
+        callback(error, response.sessionHandle);
     });
   });
 
