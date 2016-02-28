@@ -242,8 +242,6 @@ var showTableSelect = function(client, prefix, dbName, tbName, cb) {
     }
 
     var formattedData = tableFormatter(records);// ,{'align': 'c'}
-    console.log('showTableSelect result:');
-    console.log(formattedData);
     callbackCatResult('select.md', formattedData, cb);
 
   });
@@ -259,8 +257,6 @@ var showCreateTable = function(client, prefix, dbName, tbName, cb) {
       return cb('null tables,', null);
     }
     var foramttedCreateTableSQL = "```sql" + '\n' + createTableSQL + '\n' + "```";
-    console.log('showCreateTable result:');
-    console.log(foramttedCreateTableSQL);
     callbackCatResult('create_table.md', foramttedCreateTableSQL, cb);
 
   });
@@ -278,8 +274,6 @@ var showTableColumns = function(client, prefix, dbName, tbName, cb) {
     }
 
     var formattedColumnsData = tableFormatter(columns);// ,{'align': 'c'}
-    console.log('showTableColumns result:');
-    console.log(formattedColumnsData);
     callbackCatResult('columns.md', formattedColumnsData, cb);
 
   });

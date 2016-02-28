@@ -18,10 +18,5 @@
     "thrift": "^0.9.3"
   },
   "devDependencies": {
-    "gulp": "3.x",
-    "gulp-jshint": "1.x",
-    "gulp-istanbul": "0.x",
-    "gulp-mocha": "2.x",
-    "gulp-exit": "0.0.2"
   }
 }

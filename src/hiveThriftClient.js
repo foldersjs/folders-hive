@@ -132,7 +132,7 @@ HiveThriftClient.prototype.getTableColumns = function getTableColumns(schemaName
 
 HiveThriftClient.prototype.getTableRecords = function getTableRecords(schemaName, tableName, callback) {
   // FIXME: Escape db/tbname as needed.
-  var sql = 'SELECT * FROM ' + schemaName + '.' + tableName;
+  var sql = 'SELECT * FROM ' + schemaName + '.' + tableName + ' LIMIT 10';
 
   this.executeSelect(sql, callback);
 }
