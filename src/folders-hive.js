@@ -279,21 +279,6 @@ var showTableColumns = function(client, prefix, dbName, tbName, cb) {
   });
 };
 
-var showGenericResult = function(name, data, columns, cb) {
-  // convert the title of columns.
-  var title = [];
-  for (var i = 0; i < columns.length; i++) {
-    title.push(columns[i].name);
-  }
-  // insert the titils line before the first row
-  data.unshift(title);
-
-  // format the columns data include the title into markdown table
-  var formattedColumnsData = tableFormatter(data);// ,{'align': 'c'}
-
-  callbackCatResult(name, formattedColumnsData, cb);
-};
-
 var callbackCatResult = function(name, data, cb) {
 
   // create a readable stream
