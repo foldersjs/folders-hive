@@ -24,7 +24,7 @@ FoldersHive.prototype.configure = function(options, callback) {
   this.username = options.username || 'anonymous';
   this.password = options.password || '';
   this.auth = options.auth || 'nosasl';
-  this.timeout = options.timeout = "10000";
+  this.timeout = options.timeout = 10000;
 
   this.client = new HiveThriftClient(options, callback);
 };

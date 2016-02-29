@@ -14,11 +14,8 @@ module.exports = HiveThriftClient;
 HiveThriftClient.prototype.connect = function connect(options, callback) {
   var self = this;
 
-  self.connection = thrift.createConnection(options.host, options.port);
-  self.client = thrift.createClient(hive, self.connection, {
-    auth : options.auth,
-    timeout : options.timeout
-  });
+  self.connection = thrift.createConnection(options.host, options.port, options);
+  self.client = thrift.createClient(hive, self.connection);
 
   /* Handle connection errors */
   self.connection.on('error', function(error) {
@@ -284,8 +281,6 @@ function fetchRowsThrift(client, operation, maxRows, callback) {
 /*
  * ['row1-columnX-value', 'row2-columnX-value', .... rowN-columnX-value ]
  */
-// TODO check if we could get specific colummns rather than all the columns here.
-// Maybe we should always select the specific colummns in SQL, rather than filter from Fetch Result
 function getRowColumnsByColumnName(client, operation, columnName, callback) {
   getResultSetMetadataThrift(client, operation, function(error, responseMeta) {
     if (error) {

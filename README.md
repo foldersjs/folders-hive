@@ -21,7 +21,7 @@ In order to connect to HiveServer2, specify the following args.
 
 ```json
 {
-  "host" : "hive_server_hostname",
+  "host" : "hive_server2_hostname",
   "port" : "hive_server2_port", 
   "username" : "conn_username",
   "password" : "conn_password",
@@ -37,7 +37,7 @@ Provider constuctor, could pass the special option/param in the config param.
 var prefix = 'folders.io_0:hive';
 
 var config = {
-  "host" : "hive_server_hostname",
+  "host" : "hive_server2_hostname",
   "port" : "hive_server2_port", 
   "username" : "conn_username",
   "password" : "conn_password",
@@ -157,7 +157,7 @@ TBLPROPERTIES (
 
 - select.md
 
-The file show a limited number row (10) of the table records.
+The file show a **limited number(10)** rows of the table records.
 
 ```txt
 | test.col1 | test.col2 |
