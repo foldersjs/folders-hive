@@ -29,6 +29,13 @@ In order to connect to HiveServer2, specify the following args.
 }
 ```
 
+**Auth mode**
+
+we now support only 'None'(uses plain SASL), NOSASL Authentication.
+
+[HiveServer2 Authentication/Security Configuration](https://cwiki.apache.org/confluence/display/Hive/Setting+Up+HiveServer2#SettingUpHiveServer2-Authentication/SecurityConfiguration)
+
+
 ### Constructor
 
 Provider constuctor, could pass the special option/param in the config param.

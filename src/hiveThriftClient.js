@@ -64,7 +64,6 @@ HiveThriftClient.prototype.connect = function connect(options, callback) {
         if (error) {
           console.error('sasl plain auth failed');
           return callback(error, null);
-          ;
         }
 
         openSessionCb();
