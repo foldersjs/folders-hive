@@ -1,6 +1,7 @@
 var thrift = require('thrift');
 var hive = require('../lib/gen-nodejs/TCLIService');
 var ttypes = require('../lib/gen-nodejs/TCLIService_types');
+var thriftSaslHelper = require('./thriftSaslHelper.js');
 
 var HiveThriftClient = function(options, callback) {
   this.connect(options, callback);
@@ -14,6 +15,21 @@ module.exports = HiveThriftClient;
 HiveThriftClient.prototype.connect = function connect(options, callback) {
   var self = this;
 
+  // NOTES, the hive use auth none mode by default,
+  // The NONE default mode will use the PLAIN SASL for auth
+  // https://cwiki.apache.org/confluence/display/Hive/Setting+Up+HiveServer2#SettingUpHiveServer2-Authentication/SecurityConfiguration
+  if (options.auth.toLowerCase() === 'none') {
+    // NOTES, All writes to the underlying transport must be prefixed by the 4-byte length of the payload data, followed
+    // by the payload.
+    // So here we use the TFramedTransport to instead the Default TBufferedTransport.
+    // https://github.com/apache/thrift/blob/master/doc/specs/thrift-sasl-spec.txt
+    options.transport = thrift.TFramedTransport;
+  } else if (options.auth.toLowerCase() === 'nosasl') {
+    options.transport = thrift.TBufferedTransport;
+  } else {
+    callback('auth mode not supported');
+  }
+
   self.connection = thrift.createConnection(options.host, options.port, options);
   self.client = thrift.createClient(hive, self.connection);
 
@@ -21,24 +37,42 @@ HiveThriftClient.prototype.connect = function connect(options, callback) {
   self.connection.on('error', function(error) {
     console.error('connect error : ' + error);
     if (callback)
-      callback(error, null);
+      return callback(error, null);
   });
 
   self.connection.on('connect', function() {
-    openSessionThrift(self.client, options, function(error, response, protocol) {
-      if (error) {
-        console.error("OpenSession error = " + JSON.stringify(error));
-        self.session = null;
-      } else {
-        console.info("Session opened for user " + options.username + " with protocol value = " + protocol);
 
-        // TODO one thing to notice, is there any expire time for the session ?
-        // if so , we need to re-open a new session when execute thrift request.
-        self.session = response.sessionHandle;
-      }
-      if (callback)
-        callback(error, response.sessionHandle);
-    });
+    var openSessionCb = function() {
+      openSessionThrift(self.client, options, function(error, response, protocol) {
+        if (error) {
+          console.error("OpenSession error = " + JSON.stringify(error));
+          self.session = null;
+        } else {
+          console.info("Session opened for user " + options.username + " with protocol value = " + protocol);
+
+          // TODO one thing to notice, is there any expire time for the session ?
+          // if so , we need to re-open a new session when execute thrift request.
+          self.session = response.sessionHandle;
+        }
+        if (callback)
+          callback(error, response.sessionHandle);
+      });
+    }
+
+    if (options.auth.toLowerCase() === 'none') {
+      thriftSaslHelper.saslPlainHandleShake(self.connection.connection, options, function(error) {
+        if (error) {
+          console.error('sasl plain auth failed');
+          return callback(error, null);
+          ;
+        }
+
+        openSessionCb();
+      });
+    } else {
+      openSessionCb();
+    }
+
   });
 
 };

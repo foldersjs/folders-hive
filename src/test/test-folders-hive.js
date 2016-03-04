@@ -4,7 +4,10 @@ var prefix = 'folders.io_0:hive';
 
 var config = {
   "host" : "130.211.140.182",
-  "port" : 10000
+  "port" : 10000,
+  "auth" : "none", // none, nosasl
+  "username": "hive",
+  "password" : "hive-password"
 };
 
 var foldersHive = new FoldersHive(prefix, config, function(err, session) {

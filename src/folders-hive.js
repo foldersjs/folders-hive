@@ -21,9 +21,9 @@ module.exports = FoldersHive;
 FoldersHive.prototype.configure = function(options, callback) {
   this.host = options.host;
   this.port = options.port;
-  this.username = options.username || 'anonymous';
-  this.password = options.password || '';
-  this.auth = options.auth || 'nosasl';
+  this.username = options.username = options.username || 'anonymous';
+  this.password = options.password = options.password || '';
+  this.auth = options.auth = options.auth || 'none'; // none, nosasl
   this.timeout = options.timeout = 10000;
 
   this.client = new HiveThriftClient(options, callback);
